@@ -29,20 +29,21 @@ function getMimeType(filePath) {
 }
 
 function resolvePath(urlPath) {
-  if (urlPath === '/' || urlPath === '/index.html') {
-    return path.join(__dirname, 'index.html');
-  }
-
-  if (urlPath === '/app.mjs') {
-    return path.join(__dirname, 'app.mjs');
-  }
-
   if (urlPath.startsWith('/assets/')) {
     return path.join(REPO_ROOT, urlPath);
   }
 
   if (urlPath.startsWith('/dist/')) {
     return path.join(REPO_ROOT, urlPath);
+  }
+
+  if (urlPath.startsWith('/node_modules/')) {
+    return path.join(REPO_ROOT, urlPath);
+  }
+
+  const previewPath = path.resolve(__dirname, `.${urlPath === '/' ? '/index.html' : urlPath}`);
+  if (previewPath.startsWith(__dirname)) {
+    return previewPath;
   }
 
   return null;

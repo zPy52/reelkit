@@ -1,6 +1,12 @@
 import { AudioClip, type Clip, EffectClip, TextClip, VideoClip } from './clips';
 import type { Anchor, AudioClipOptions, BaseClipOptions } from './clips';
 import { TypedEmitter } from './events/emitter';
+import {
+  ExportPipeline,
+  ExportService,
+  type ExportOptions,
+  type ExportResult,
+} from './export';
 import { CanvasRenderer, type PreviewHandle, type PreviewOptions } from './renderer/canvas-renderer';
 import { TextRenderer } from './renderer/text-renderer';
 
@@ -38,6 +44,10 @@ export interface TimelineEvents {
   'play': [];
   'pause': [];
   'ended': [];
+  'export-start': [];
+  'export-progress': [progress: number];
+  'export-complete': [result: ExportResult];
+  'export-error': [error: Error];
 }
 
 function now(): number {
@@ -279,6 +289,14 @@ export class Timeline extends TypedEmitter<TimelineEvents> {
     };
   }
 
+  public async export(options?: ExportOptions): Promise<ExportResult> {
+    return this.runExport(options, true);
+  }
+
+  public async exportBlob(options?: ExportOptions): Promise<ExportResult> {
+    return this.runExport(options, false);
+  }
+
   public destroy(): void {
     this.pause();
     this.offscreenRenderer?.destroy();
@@ -290,6 +308,40 @@ export class Timeline extends TypedEmitter<TimelineEvents> {
 
   private storeClip(clip: Clip): void {
     this.clips.set(clip.id, clip);
+  }
+
+  private async runExport(
+    options: ExportOptions | undefined,
+    shouldDownload: boolean,
+  ): Promise<ExportResult> {
+    this.emit('export-start');
+    this.emit('export-progress', 0);
+
+    try {
+      const resolved = ExportService.options.resolve(options, this);
+      const pipeline = new ExportPipeline(this, {
+        ...resolved,
+        onProgress: (progress) => {
+          resolved.onProgress?.(progress);
+          this.emit('export-progress', progress);
+        },
+      });
+      const pipelineResult = await pipeline.run();
+      const url = shouldDownload
+        ? ExportService.download.trigger(pipelineResult.blob, resolved.filename)
+        : ExportService.download.createUrl(pipelineResult.blob);
+      const result: ExportResult = {
+        ...pipelineResult,
+        url,
+      };
+
+      this.emit('export-complete', result);
+      return result;
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      this.emit('export-error', normalized);
+      throw normalized;
+    }
   }
 
   private createAudioCompanion(clip: VideoClip): AudioClip {

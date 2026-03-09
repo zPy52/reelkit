@@ -48,23 +48,33 @@ function createTrackedMediaElement<TElement extends HTMLMediaElement>(
 
 export class MediaPool {
   private readonly videos = new Map<string, HTMLVideoElement>();
+  private readonly videoSources = new Map<string, string>();
   private readonly images = new Map<string, HTMLImageElement>();
   private readonly audios = new Map<string, HTMLMediaElement>();
+  private readonly audioSources = new Map<string, string>();
 
   public constructor(private readonly onInvalidate?: () => void) {}
 
-  public getVideoElement(source: Source): HTMLVideoElement {
-    const src = toSourceString(source);
+  public getVideoElement(clip: VideoClip): HTMLVideoElement {
+    const src = toSourceString(clip.src);
+    const key = clip.id;
+    const existing = this.videos.get(key);
 
-    if (!this.videos.has(src)) {
-      const element = createTrackedMediaElement(document.createElement('video'), src, this.onInvalidate);
-      element.muted = true;
-      element.defaultMuted = true;
-      element.playsInline = true;
-      this.videos.set(src, element);
+    if (existing && this.videoSources.get(key) === src) {
+      return existing;
     }
 
-    return this.videos.get(src)!;
+    if (existing) {
+      this.disposeElement(existing);
+    }
+
+    const element = createTrackedMediaElement(document.createElement('video'), src, this.onInvalidate);
+    element.muted = true;
+    element.defaultMuted = true;
+    element.playsInline = true;
+    this.videos.set(key, element);
+    this.videoSources.set(key, src);
+    return element;
   }
 
   public getImageElement(source: Source): HTMLImageElement {
@@ -85,27 +95,34 @@ export class MediaPool {
 
   public getAudioElement(clip: AudioClip): HTMLMediaElement {
     const src = toSourceString(clip.src);
-    const key = `${clip.mediaTag}:${src}`;
+    const key = clip.id;
+    const existing = this.audios.get(key);
 
-    if (!this.audios.has(key)) {
-      const tagName = clip.mediaTag === 'video' ? 'video' : 'audio';
-      const element = createTrackedMediaElement(
-        document.createElement(tagName) as HTMLMediaElement,
-        src,
-        this.onInvalidate,
-      );
-      element.playsInline = true;
-      if (element instanceof HTMLVideoElement) {
-        element.playsInline = true;
-      }
-      this.audios.set(key, element);
+    if (existing && this.audioSources.get(key) === src) {
+      return existing;
     }
 
-    return this.audios.get(key)!;
+    if (existing) {
+      this.disposeElement(existing);
+    }
+
+    const tagName = clip.mediaTag === 'video' ? 'video' : 'audio';
+    const element = createTrackedMediaElement(
+      document.createElement(tagName) as HTMLMediaElement,
+      src,
+      this.onInvalidate,
+    );
+    element.playsInline = true;
+    if (element instanceof HTMLVideoElement) {
+      element.playsInline = true;
+    }
+    this.audios.set(key, element);
+    this.audioSources.set(key, src);
+    return element;
   }
 
   public syncVideo(clip: VideoClip, time: number, playing: boolean): HTMLVideoElement {
-    const element = this.getVideoElement(clip.src);
+    const element = this.getVideoElement(clip);
     const { sourceStart, sourceEnd } = getPlayableWindow(clip, element.duration);
     const localTime = Math.max(sourceStart, time - clip.start + sourceStart);
     const shouldPlay = playing && (typeof sourceEnd !== 'number' || localTime < sourceEnd);
@@ -150,23 +167,21 @@ export class MediaPool {
   }
 
   public pauseInactiveClips(clips: readonly Clip[]): void {
-    const activeVideoSources = new Set(
-      clips.filter((clip): clip is VideoClip => clip.kind === 'video').map((clip) => toSourceString(clip.src)),
+    const activeVideoIds = new Set(
+      clips.filter((clip): clip is VideoClip => clip.kind === 'video').map((clip) => clip.id),
     );
-    const activeAudioSources = new Set(
-      clips.filter((clip): clip is AudioClip => clip.kind === 'audio').map((clip) => {
-        return `${clip.mediaTag}:${toSourceString(clip.src)}`;
-      }),
+    const activeAudioIds = new Set(
+      clips.filter((clip): clip is AudioClip => clip.kind === 'audio').map((clip) => clip.id),
     );
 
-    for (const [source, element] of this.videos) {
-      if (!activeVideoSources.has(source)) {
+    for (const [key, element] of this.videos) {
+      if (!activeVideoIds.has(key)) {
         element.pause();
       }
     }
 
     for (const [key, element] of this.audios) {
-      if (!activeAudioSources.has(key)) {
+      if (!activeAudioIds.has(key)) {
         element.pause();
       }
     }
@@ -174,19 +189,23 @@ export class MediaPool {
 
   public destroy(): void {
     for (const element of this.videos.values()) {
-      element.pause();
-      element.removeAttribute('src');
-      element.load();
+      this.disposeElement(element);
     }
 
     for (const element of this.audios.values()) {
-      element.pause();
-      element.removeAttribute('src');
-      element.load();
+      this.disposeElement(element);
     }
 
     this.videos.clear();
+    this.videoSources.clear();
     this.images.clear();
     this.audios.clear();
+    this.audioSources.clear();
+  }
+
+  private disposeElement(element: HTMLMediaElement): void {
+    element.pause();
+    element.removeAttribute('src');
+    element.load();
   }
 }

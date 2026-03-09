@@ -6,6 +6,7 @@ export { PreviewHooks } from './hooks';
 export type {
   PreviewHooksOptions,
   UseClipsResult,
+  UseExportResult,
   UsePlaybackResult,
   UsePreviewResult,
   UseTimelineOptions,
@@ -21,6 +22,10 @@ export function usePlayback(timeline: Timeline) {
 
 export function useClips(timeline: Timeline) {
   return PreviewHooks.clips.use(timeline);
+}
+
+export function useExport(timeline: Timeline) {
+  return PreviewHooks.export.use(timeline);
 }
 
 export function usePreview(timeline: Timeline, previewOptions?: Parameters<typeof PreviewHooks.preview.use>[1]) {

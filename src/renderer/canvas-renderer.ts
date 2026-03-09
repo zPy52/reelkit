@@ -1,6 +1,7 @@
 import type { AudioClip, Clip, EffectClip } from '../clips';
 import { AudioEngine } from '../audio/audio-engine';
 import { Compositor } from './compositor';
+import { getFrameState, resolveRenderTime } from './frame-state';
 import { MediaPool } from './media-pool';
 
 export interface PreviewOptions {
@@ -45,6 +46,8 @@ export class CanvasRenderer {
   private readonly unsubscribers: Array<() => void> = [];
   private readonly pixelRatio: number;
   private readonly mountedToContainer: boolean;
+  private readonly trackCanvas: HTMLCanvasElement;
+  private readonly trackContext: CanvasRenderingContext2D;
 
   public constructor(
     private readonly timeline: TimelineLike,
@@ -59,6 +62,11 @@ export class CanvasRenderer {
     this.context = this.canvas.getContext('2d');
     if (!this.context) {
       throw new Error('Unable to acquire a 2D context for the preview canvas.');
+    }
+    this.trackCanvas = document.createElement('canvas');
+    this.trackContext = this.trackCanvas.getContext('2d');
+    if (!this.trackContext) {
+      throw new Error('Unable to acquire a 2D context for track compositing.');
     }
 
     this.pixelRatio = options.pixelRatio ?? window.devicePixelRatio ?? 1;
@@ -80,33 +88,34 @@ export class CanvasRenderer {
 
   public drawFrame(time: number): void {
     const canvasSize = { width: this.timeline.width, height: this.timeline.height };
-    const activeClips = this.timeline.getClips().filter((clip) => clip.includes(time));
-    const audioClips = activeClips.filter((clip): clip is AudioClip => clip.kind === 'audio');
-    const mediaClips = activeClips.filter((clip) => clip.kind !== 'audio' && clip.kind !== 'effect');
-    const trackEffects = activeClips.filter((clip): clip is EffectClip => clip.kind === 'effect');
-    const compositionEffects = trackEffects.filter((clip) => clip.track < 0);
-    const groupedTracks = Array.from(
-      new Set(mediaClips.map((clip) => clip.track).concat(trackEffects.map((clip) => clip.track).filter((track) => track >= 0))),
-    ).sort((left, right) => left - right);
+    const renderTime = resolveRenderTime(time, this.timeline.getDuration());
+    const frameState = getFrameState(this.timeline.getClips(), renderTime);
 
-    this.context.clearRect(0, 0, this.timeline.width, this.timeline.height);
+    this.context.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
-    this.audio.sync(audioClips, time, this.timeline.playing);
-    this.pool.pauseInactiveClips(activeClips);
+    this.audio.sync(frameState.audioClips, renderTime, this.timeline.playing);
+    this.pool.pauseInactiveClips(frameState.activeClips);
 
-    for (const track of groupedTracks) {
-      const clipsOnTrack = mediaClips
-        .filter((clip) => clip.track === track)
-        .sort((left, right) => left.start - right.start || left.id.localeCompare(right.id));
-      for (const clip of clipsOnTrack) {
-        this.compositor.draw(this.context, clip, time, canvasSize, this.timeline.playing);
+    for (const layer of frameState.trackLayers) {
+      this.trackContext.clearRect(0, 0, canvasSize.width, canvasSize.height);
+      for (const clip of layer.clips) {
+        this.compositor.draw(this.trackContext, clip, renderTime, canvasSize, this.timeline.playing);
       }
 
-      const effectsOnTrack = trackEffects.filter((clip) => clip.track === track);
-      this.compositor.applyEffects(this.context, effectsOnTrack, time, this.canvas);
+      this.compositor.applyEffects(this.trackContext, layer.effects, renderTime, this.trackCanvas, {
+        ...canvasSize,
+        pixelRatio: this.pixelRatio,
+      });
+
+      if (layer.clips.length > 0 || layer.effects.length > 0) {
+        this.compositor.compositeSurface(this.context, this.trackCanvas, canvasSize);
+      }
     }
 
-    this.compositor.applyEffects(this.context, compositionEffects, time, this.canvas);
+    this.compositor.applyEffects(this.context, frameState.compositionEffects, renderTime, this.canvas, {
+      ...canvasSize,
+      pixelRatio: this.pixelRatio,
+    });
   }
 
   public async getFrameAt(time: number): Promise<ImageBitmap> {
@@ -124,6 +133,8 @@ export class CanvasRenderer {
 
     this.canvas.width = Math.round(width * this.pixelRatio);
     this.canvas.height = Math.round(height * this.pixelRatio);
+    this.trackCanvas.width = this.canvas.width;
+    this.trackCanvas.height = this.canvas.height;
     this.canvas.style.width = typeof cssWidth === 'number'
       ? `${cssWidth}px`
       : this.mountedToContainer
@@ -135,6 +146,7 @@ export class CanvasRenderer {
         ? '100%'
         : `${height}px`;
     this.context.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+    this.trackContext.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
     this.drawFrame(this.timeline.currentTime);
   }
 

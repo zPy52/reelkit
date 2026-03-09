@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { act, render, renderHook } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TextClip } from '@/index';
-import { Preview, useClips, usePlayback, useTimeline } from '@/react';
+import { TextClip, Timeline } from '@/index';
+import { Preview, useClips, useExport, usePlayback, useTimeline } from '@/react';
 import { installCanvasMock } from '../helpers';
 
 describe('react preview hooks', () => {
@@ -73,5 +73,101 @@ describe('react preview hooks', () => {
     });
 
     expect(result.current.playback.isPlaying).toBe(false);
+  });
+
+  it('runs export through the hook surface', async () => {
+    const { result } = renderHook(() => {
+      const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });
+      const exporter = useExport(timeline);
+      return { timeline, exporter };
+    });
+
+    const exportSpy = vi.spyOn(result.current.timeline, 'export').mockImplementation(async (options) => {
+      options?.onProgress?.(0.25);
+      options?.onProgress?.(1);
+
+      return {
+        blob: new Blob(['video'], { type: 'video/mp4' }),
+        url: 'blob:hook-export',
+        duration: 2,
+        stats: {
+          totalFrames: 60,
+          encodingTimeMs: 90,
+          fileSizeBytes: 5,
+        },
+      };
+    });
+
+    let exportResult: Awaited<ReturnType<typeof result.current.exporter.exportVideo>> | undefined;
+    await act(async () => {
+      exportResult = await result.current.exporter.exportVideo();
+    });
+
+    expect(exportSpy).toHaveBeenCalledOnce();
+    expect(exportSpy.mock.calls[0]?.[0]?.signal).toBeInstanceOf(AbortSignal);
+    expect(exportResult?.url).toBe('blob:hook-export');
+    expect(result.current.exporter.isExporting).toBe(false);
+    expect(result.current.exporter.progress).toBeNull();
+    expect(result.current.exporter.error).toBeNull();
+  });
+
+  it('resets playback state when the caller swaps timeline instances', async () => {
+    const first = new Timeline({ width: 1280, height: 720, fps: 30 });
+    first.add(new TextClip({
+      start: 0,
+      duration: 2,
+      text: 'first',
+    }));
+    first.seek(1.25);
+    first.play();
+
+    const second = new Timeline({ width: 1280, height: 720, fps: 30 });
+    second.add(new TextClip({
+      start: 0,
+      duration: 2,
+      text: 'second',
+    }));
+    second.seek(0.4);
+
+    const { result, rerender } = renderHook(({ timeline }) => usePlayback(timeline), {
+      initialProps: { timeline: first },
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.currentTime).toBeCloseTo(1.25, 3);
+    });
+
+    rerender({ timeline: second });
+
+    await waitFor(() => {
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.currentTime).toBeCloseTo(0.4, 3);
+    });
+
+    first.pause();
+  });
+
+  it('updates the Preview shell aspect ratio when the timeline resolution changes', () => {
+    const timeline = new Timeline({ width: 1280, height: 720, fps: 30 });
+    const view = render(<Preview timeline={timeline} />);
+    const shell = view.container.firstElementChild as HTMLElement;
+
+    expect(shell.style.aspectRatio).toBe('1280 / 720');
+
+    act(() => {
+      timeline.setResolution(640, 360);
+    });
+
+    expect(shell.style.aspectRatio).toBe('640 / 360');
+  });
+
+  it('destroys hook-owned timelines on unmount', () => {
+    const { result, unmount } = renderHook(() => useTimeline({ width: 1280, height: 720, fps: 30 }));
+    const destroySpy = vi.spyOn(result.current, 'destroy');
+
+    unmount();
+
+    expect(destroySpy).toHaveBeenCalledOnce();
   });
 });

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Timeline } from '../../timeline';
 import type { UseTimelineOptions } from './types';
 
@@ -8,6 +8,13 @@ export class SubmodulePreviewHooksTimeline {
     if (reference.current === null) {
       reference.current = new Timeline(options);
     }
+
+    useEffect(() => {
+      return () => {
+        reference.current?.destroy();
+        reference.current = null;
+      };
+    }, []);
 
     return reference.current;
   }

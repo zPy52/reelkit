@@ -1,6 +1,6 @@
 {
   "name": "videocanvas",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "TypeScript SDK for video composition and rendering",
   "type": "module",
   "files": [
@@ -21,8 +21,13 @@
     "build": "tsdown",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:visual": "playwright test tests/browser/qa-gallery.spec.ts",
+    "test:visual:update": "playwright test tests/browser/qa-gallery.spec.ts --update-snapshots",
+    "test:export-qa": "playwright test tests/browser/export-qa.spec.ts",
+    "test:qa": "npm test && npm run test:visual && npm run test:export-qa",
     "prepublishOnly": "npm run build",
-    "preview": "npm run build && node examples/preview/server.mjs"
+    "preview": "npm run preview:gallery",
+    "preview:gallery": "npm run build && node examples/preview/server.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -49,9 +54,12 @@
     }
   },
   "dependencies": {
-    "ffmpeg-static": "^5.3.0"
+    "ffmpeg-static": "^5.3.0",
+    "mp4-muxer": "^5.2.2",
+    "webm-muxer": "^5.1.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^25.2.3",

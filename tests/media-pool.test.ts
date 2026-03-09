@@ -1,8 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
-import { AudioClip } from '@/index';
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AudioClip, VideoClip } from '@/index';
 import { MediaPool } from '@/renderer/media-pool';
 
 describe('MediaPool', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('pauses audio clips once the underlying media has been exhausted', () => {
     const pool = new MediaPool();
     const clip = new AudioClip({
@@ -61,5 +67,81 @@ describe('MediaPool', () => {
 
     expect(mediaElement.play).not.toHaveBeenCalled();
     expect(mediaElement.pause).not.toHaveBeenCalled();
+  });
+
+  it('keeps duplicate-source video clips independent by clip id', () => {
+    const pool = new MediaPool();
+    const left = new VideoClip({
+      id: 'video-left',
+      start: 0,
+      duration: 8,
+      src: '/shared.mp4',
+      audio: false,
+    });
+    const right = new VideoClip({
+      id: 'video-right',
+      start: 0,
+      duration: 8,
+      src: '/shared.mp4',
+      audio: false,
+    });
+
+    const leftElement = pool.getVideoElement(left);
+    const rightElement = pool.getVideoElement(right);
+
+    Object.defineProperties(leftElement, {
+      currentTime: { configurable: true, writable: true, value: 0 },
+      duration: { configurable: true, writable: true, value: 10 },
+      paused: { configurable: true, writable: true, value: true },
+    });
+    Object.defineProperties(rightElement, {
+      currentTime: { configurable: true, writable: true, value: 0 },
+      duration: { configurable: true, writable: true, value: 10 },
+      paused: { configurable: true, writable: true, value: true },
+    });
+
+    leftElement.play = vi.fn(async function play(this: HTMLVideoElement & { paused: boolean }) {
+      this.paused = false;
+    });
+    leftElement.pause = vi.fn(function pause(this: HTMLVideoElement & { paused: boolean }) {
+      this.paused = true;
+    });
+    rightElement.play = vi.fn(async function play(this: HTMLVideoElement & { paused: boolean }) {
+      this.paused = false;
+    });
+    rightElement.pause = vi.fn(function pause(this: HTMLVideoElement & { paused: boolean }) {
+      this.paused = true;
+    });
+
+    expect(leftElement).not.toBe(rightElement);
+
+    pool.syncVideo(left, 1.25, true);
+    pool.syncVideo(right, 4.5, true);
+
+    expect(leftElement.currentTime).toBeCloseTo(1.25, 3);
+    expect(rightElement.currentTime).toBeCloseTo(4.5, 3);
+    expect(leftElement.play).toHaveBeenCalledTimes(1);
+    expect(rightElement.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes media elements when a clip source changes without reusing the old element', () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
+
+    const pool = new MediaPool();
+    const clip = new VideoClip({
+      id: 'video-source-swap',
+      start: 0,
+      duration: 4,
+      src: '/original.mp4',
+      audio: false,
+    });
+
+    const firstElement = pool.getVideoElement(clip);
+    clip.src = '/updated.mp4';
+    const secondElement = pool.getVideoElement(clip);
+
+    expect(secondElement).not.toBe(firstElement);
+    expect(secondElement.getAttribute('src')).toContain('/updated.mp4');
   });
 });

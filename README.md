@@ -8,6 +8,7 @@ The current SDK surface covers:
 - Video, image, audio, text, and effect clips
 - DOM canvas preview mounting
 - Offscreen frame capture with `getFrameAt()`
+- Browser export to downloadable `mp4` or `webm`
 - React helpers from `videocanvas/react`
 
 ## Installation
@@ -114,6 +115,17 @@ preview.seek(2.5);
 preview.pause();
 ```
 
+## QA
+
+Repo-level checks:
+
+- `npm test` runs the Vitest unit and integration suite.
+- `npm run test:visual` runs the Chromium canvas snapshot suite.
+- `npm run test:export-qa` runs browser export smoke and preview/export parity checks.
+- `npm run test:qa` runs all of the above in sequence.
+
+For manual inspection, `npm run preview` opens the browser QA gallery in `examples/preview/`.
+
 ## Core Concepts
 
 ### Timeline
@@ -139,6 +151,8 @@ Main methods:
 - `mountPreview(container, previewOptions?)`
 - `getFrameAt(time)`
 - `previewFrames({ range, fps?, signal?, onFrame })`
+- `export(options?)`
+- `exportBlob(options?)`
 - `destroy()`
 
 Main state:
@@ -159,6 +173,10 @@ Events:
 - `play`
 - `pause`
 - `ended`
+- `export-start`
+- `export-progress`
+- `export-complete`
+- `export-error`
 
 ## Clips
 
@@ -352,7 +370,100 @@ Exports:
 - `useTimeline(options)`
 - `usePlayback(timeline)`
 - `useClips(timeline)`
+- `useExport(timeline)`
 - `usePreview(timeline, previewOptions?)`
+
+`useExport()` wraps `timeline.export()` with `isExporting`, `progress`, `error`, and `cancel()`.
+
+```tsx
+import { useExport, useTimeline } from 'videocanvas/react';
+
+function ExportButton() {
+  const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });
+  const { exportVideo, cancel, progress, isExporting } = useExport(timeline);
+
+  return (
+    <div>
+      <button
+        onClick={() => exportVideo({ format: 'mp4', quality: 'high' })}
+        disabled={isExporting}
+      >
+        Export
+      </button>
+      {isExporting ? (
+        <>
+          <progress value={progress ?? 0} max={1} />
+          <button onClick={cancel}>Cancel</button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+```
+
+## Export
+
+Use `timeline.export()` to encode the current composition in the browser and trigger a download, or `timeline.exportBlob()` to receive the encoded `Blob` without downloading it.
+
+```ts
+const result = await timeline.export({
+  filename: 'composition.mp4',
+  format: 'mp4',
+  quality: 'high',
+  resolution: { width: 1920 },
+  onProgress: (progress) => {
+    console.log(`Export: ${Math.round(progress * 100)}%`);
+  },
+});
+
+console.log(result.blob, result.url, result.stats);
+```
+
+Available options:
+
+- `filename?: string`
+- `format?: 'mp4' | 'webm'`
+- `codec?: 'avc' | 'hevc' | 'vp9' | 'av1'`
+- `resolution?: { width?: number; height?: number }`
+- `quality?: 'high' | 'balanced' | 'low'`
+- `bitrate?: number`
+- `fps?: number`
+- `hardwareAcceleration?: 'prefer-hardware' | 'prefer-software' | 'no-preference'`
+- `audio?: boolean`
+- `audioBitrate?: number`
+- `signal?: AbortSignal`
+- `onProgress?: (progress: number) => void`
+
+Format and codec compatibility:
+
+- `mp4` supports `avc` and `hevc`
+- `webm` supports `vp9` and `av1`
+- default video codec is `avc` for `mp4` and `vp9` for `webm`
+- audio is enabled by default and uses `aac` for `mp4` and `opus` for `webm`
+
+`export()` and `exportBlob()` both resolve to:
+
+```ts
+type ExportResult = {
+  blob: Blob;
+  url: string;
+  duration: number;
+  stats: {
+    totalFrames: number;
+    encodingTimeMs: number;
+    fileSizeBytes: number;
+  };
+};
+```
+
+Export behavior notes:
+
+- exporting an empty timeline throws an error
+- export progress is also emitted through timeline events
+- audio export only includes non-muted audio clips with `volume > 0`
+- video clips with `audio: true` still contribute audio through their linked companion `AudioClip`
+- `export()` creates a download URL and starts a browser download
+- `exportBlob()` returns an object URL without downloading; revoke it when finished
 
 ## Browser Preview Example
 
@@ -367,7 +478,7 @@ Then open `http://localhost:8765`.
 
 See [examples/preview/README.md](/Users/antoniopenapena/Documents/NpmProjects/videocanvas/examples/preview/README.md) for details.
 
-## Current Scope
+## Runtime Requirements
 
 This README documents the API currently exported by the package.
 
@@ -376,4 +487,6 @@ Current constraints:
 - Sources are `string | URL`
 - Preview rendering requires a DOM-enabled browser environment
 - `getFrameAt()` depends on `createImageBitmap`
-- The public SDK does not currently expose a file export API such as MP4 rendering
+- Export depends on browser support for `VideoEncoder` / `AudioEncoder` (WebCodecs)
+- Audio export depends on `OfflineAudioContext`
+- Export fetches audio clip sources in the browser; inaccessible URLs will fail

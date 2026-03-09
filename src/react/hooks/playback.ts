@@ -8,6 +8,11 @@ export class SubmodulePreviewHooksPlayback {
     const [isPlaying, setIsPlaying] = useState(timeline.playing);
 
     useEffect(() => {
+      setCurrentTime(timeline.currentTime);
+      setIsPlaying(timeline.playing);
+    }, [timeline]);
+
+    useEffect(() => {
       return timeline.on('timeupdate', (time) => {
         setCurrentTime(time);
       });

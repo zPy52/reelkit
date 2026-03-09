@@ -1,5 +1,6 @@
 import type { Clip, EffectClip, ImageClip, TextClip, VideoClip } from '../clips';
 import { resolvePlacement } from './placement';
+import type { RenderableClip } from './frame-state';
 import { MediaPool } from './media-pool';
 import { TextRenderer } from './text-renderer';
 import { getEffectNode } from './effect-node';
@@ -9,12 +10,19 @@ export interface CanvasSize {
   height: number;
 }
 
+export interface SurfaceDescriptor extends CanvasSize {
+  pixelRatio: number;
+}
+
 export class Compositor {
+  private scratchCanvas?: HTMLCanvasElement;
+  private scratchContext?: CanvasRenderingContext2D;
+
   public constructor(private readonly pool: MediaPool) {}
 
   public draw(
     context: CanvasRenderingContext2D,
-    clip: Exclude<Clip, { kind: 'audio' | 'effect' }>,
+    clip: RenderableClip,
     time: number,
     canvas: CanvasSize,
     playing: boolean,
@@ -37,16 +45,13 @@ export class Compositor {
     effects: readonly EffectClip[],
     time: number,
     sourceCanvas: HTMLCanvasElement,
+    surface: SurfaceDescriptor,
   ): void {
     if (effects.length === 0) {
       return;
     }
 
-    const scratch = document.createElement('canvas');
-    scratch.width = sourceCanvas.width;
-    scratch.height = sourceCanvas.height;
-    const scratchContext = scratch.getContext('2d');
-
+    const scratchContext = this.configureScratchCanvas(sourceCanvas, surface);
     if (!scratchContext) {
       return;
     }
@@ -58,15 +63,53 @@ export class Compositor {
         continue;
       }
 
-      scratchContext.clearRect(0, 0, scratch.width, scratch.height);
-      scratchContext.drawImage(sourceCanvas, 0, 0);
+      scratchContext.clearRect(0, 0, surface.width, surface.height);
+      scratchContext.drawImage(
+        sourceCanvas,
+        0,
+        0,
+        sourceCanvas.width,
+        sourceCanvas.height,
+        0,
+        0,
+        surface.width,
+        surface.height,
+      );
 
       context.save();
-      context.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+      context.clearRect(0, 0, surface.width, surface.height);
       context.filter = filter;
-      context.drawImage(scratch, 0, 0);
+      context.drawImage(
+        this.scratchCanvas!,
+        0,
+        0,
+        this.scratchCanvas!.width,
+        this.scratchCanvas!.height,
+        0,
+        0,
+        surface.width,
+        surface.height,
+      );
       context.restore();
     }
+  }
+
+  public compositeSurface(
+    context: CanvasRenderingContext2D,
+    sourceCanvas: HTMLCanvasElement,
+    surface: CanvasSize,
+  ): void {
+    context.drawImage(
+      sourceCanvas,
+      0,
+      0,
+      sourceCanvas.width,
+      sourceCanvas.height,
+      0,
+      0,
+      surface.width,
+      surface.height,
+    );
   }
 
   private drawVideo(
@@ -147,5 +190,35 @@ export class Compositor {
 
     context.drawImage(source, placement.x, placement.y, placement.width, placement.height);
     context.restore();
+  }
+
+  private configureScratchCanvas(
+    sourceCanvas: HTMLCanvasElement,
+    surface: SurfaceDescriptor,
+  ): CanvasRenderingContext2D | null {
+    if (!this.scratchCanvas) {
+      this.scratchCanvas = document.createElement('canvas');
+    }
+
+    if (
+      this.scratchCanvas.width !== sourceCanvas.width
+      || this.scratchCanvas.height !== sourceCanvas.height
+    ) {
+      this.scratchCanvas.width = sourceCanvas.width;
+      this.scratchCanvas.height = sourceCanvas.height;
+      this.scratchContext = undefined;
+    }
+
+    if (!this.scratchContext) {
+      this.scratchContext = this.scratchCanvas.getContext('2d') ?? undefined;
+    }
+
+    if (!this.scratchContext) {
+      return null;
+    }
+
+    this.scratchContext.setTransform(surface.pixelRatio, 0, 0, surface.pixelRatio, 0, 0);
+    this.scratchContext.filter = 'none';
+    return this.scratchContext;
   }
 }

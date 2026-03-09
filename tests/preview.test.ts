@@ -56,4 +56,27 @@ describe('preview mounting', () => {
 
     expect(createImageBitmap).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps the final visual frame visible at the exact composition end', async () => {
+    const context = installCanvasMock();
+    const container = document.createElement('div');
+    document.body.append(container);
+
+    const timeline = new Timeline({ width: 640, height: 360, fps: 30 });
+    timeline.add(new TextClip({
+      start: 0,
+      duration: 1,
+      text: 'final frame',
+    }));
+
+    const handle = timeline.mountPreview(container);
+    context.drawImage.mockClear();
+
+    handle.seek(timeline.getDuration());
+    expect(context.drawImage).toHaveBeenCalled();
+
+    context.drawImage.mockClear();
+    await timeline.getFrameAt(timeline.getDuration());
+    expect(context.drawImage).toHaveBeenCalled();
+  });
 });

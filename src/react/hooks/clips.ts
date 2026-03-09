@@ -7,6 +7,10 @@ export class SubmodulePreviewHooksClips {
     const [clips, setClips] = useState<UseClipsResult>(timeline.getClips());
 
     useEffect(() => {
+      setClips(timeline.getClips());
+    }, [timeline]);
+
+    useEffect(() => {
       const refresh = () => {
         setClips(timeline.getClips());
       };

@@ -45,6 +45,7 @@ React entrypoint exports:
 - `useTimeline`
 - `usePlayback`
 - `useClips`
+- `useExport`
 - `usePreview`
 
 Read [references/api.md](references/api.md) when you need constructor signatures, events, placement rules, or React usage.
@@ -57,6 +58,9 @@ Read [references/api.md](references/api.md) when you need constructor signatures
 - `Source` is currently `string | URL`. Do not claim support for buffers or uploads unless you add it to the code.
 - `mountPreview()` and the React preview APIs require a DOM environment.
 - `getFrameAt()` requires `createImageBitmap`.
+- `timeline.export()` and `timeline.exportBlob()` are part of the public API.
+- Export supports `mp4` (`avc`, `hevc`) and `webm` (`vp9`, `av1`).
+- Export relies on browser WebCodecs and `OfflineAudioContext`; document those requirements when relevant.
 - Built-in effects are only `fade` and `blur` unless more are registered.
 
 ## Guidance For Common Tasks
@@ -78,7 +82,8 @@ Read [references/api.md](references/api.md) when you need constructor signatures
 
 - Prefer short examples that mirror `examples/preview/app.mjs`.
 - Mention the automatic audio companion behavior for videos.
-- Do not document an export-to-file API unless it exists in the current public source.
+- Document `timeline.export()` / `timeline.exportBlob()` when the task touches delivery or downloads.
+- Mention that `useExport()` is available from `videocanvas/react` for React UIs.
 
 ## References
 

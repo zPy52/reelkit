@@ -26,6 +26,16 @@ export type {
   TextStyle,
   VideoClipOptions,
 } from './clips';
+export type {
+  ExportAudioCodec,
+  ExportFormat,
+  ExportHardwareAcceleration,
+  ExportOptions,
+  ExportQuality,
+  ExportResolution,
+  ExportResult,
+  ExportVideoCodec,
+} from './export';
 export {
   getEffectNode,
   registerEffectNode,
