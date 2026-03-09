@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vidio preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 20px;
+      color: #fff;
+    }
+    .preview-wrap {
+      width: 100%;
+      max-width: 900px;
+      background: #1a1a1a;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .preview-wrap video {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .preview-wrap.loading video { opacity: 0.7; }
+    .preview-wrap .placeholder {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .controls {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+    .slider-wrap {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type="range"] {
+      flex: 1;
+      height: 8px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #333;
+      border-radius: 4px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6b8cff;
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6b8cff;
+      cursor: pointer;
+      border: none;
+    }
+    .time {
+      font-variant-numeric: tabular-nums;
+      min-width: 100px;
+      font-size: 0.9rem;
+      color: #999;
+    }
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: #333;
+      color: #fff;
+    }
+    button:hover { background: #444; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.primary { background: #6b8cff; }
+    button.primary:hover { background: #7b9cff; }
+    .error {
+      color: #e57373;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vidio preview</h1>
+  <div class="preview-wrap" id="previewWrap">
+    <span class="placeholder" id="placeholder">Loading…</span>
+    <video id="player" preload="auto" playsinline style="display: none;"></video>
+  </div>
+  <div class="controls">
+    <div class="slider-wrap">
+      <input type="range" id="slider" min="0" max="100" step="0.01" value="0" />
+      <span class="time" id="time">0.00s / 0.00s</span>
+    </div>
+    <button type="button" id="playBtn" class="primary">Play</button>
+    <button type="button" id="pauseBtn" disabled>Pause</button>
+  </div>
+  <p class="error" id="error" style="display: none;"></p>
+
+  <script>
+    (function () {
+      const previewWrap = document.getElementById('previewWrap');
+      const placeholder = document.getElementById('placeholder');
+      const player = document.getElementById('player');
+      const slider = document.getElementById('slider');
+      const timeEl = document.getElementById('time');
+      const playBtn = document.getElementById('playBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const errorEl = document.getElementById('error');
+
+      let metadata = null;
+      let currentTime = 0;
+      let playing = false;
+      let isScrubbing = false;
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+      }
+
+      function clearError() {
+        errorEl.textContent = '';
+        errorEl.style.display = 'none';
+      }
+
+      function setPlayingState(nextPlaying) {
+        playing = nextPlaying;
+        playBtn.disabled = nextPlaying;
+        pauseBtn.disabled = !nextPlaying;
+      }
+
+      function formatTime(s) {
+        return s.toFixed(2) + 's';
+      }
+
+      function updateTimeDisplay() {
+        const dur = getDuration();
+        timeEl.textContent = formatTime(currentTime) + ' / ' + formatTime(dur);
+      }
+
+      function getDuration() {
+        if (metadata && Number.isFinite(metadata.duration)) return metadata.duration;
+        if (Number.isFinite(player.duration)) return player.duration;
+        return 0;
+      }
+
+      async function loadMetadata() {
+        const res = await fetch('/api/metadata');
+        if (!res.ok) throw new Error(await res.text());
+        metadata = await res.json();
+        slider.min = '0';
+        slider.max = String(metadata.duration);
+        slider.step = '0.01';
+        currentTime = 0;
+        updateTimeDisplay();
+      }
+
+      function toClampedTime(value) {
+        const duration = getDuration();
+        const numeric = Number.parseFloat(String(value));
+        if (!Number.isFinite(numeric)) return 0;
+        return Math.max(0, Math.min(numeric, duration));
+      }
+
+      async function play() {
+        clearError();
+        if (currentTime >= getDuration() - 1e-9) {
+          player.currentTime = 0;
+          currentTime = 0;
+          slider.value = '0';
+          updateTimeDisplay();
+        }
+        try {
+          await player.play();
+          setPlayingState(true);
+        } catch (e) {
+          showError('Play failed: ' + (e.message || e));
+          setPlayingState(false);
+        }
+      }
+
+      function pause() {
+        player.pause();
+        setPlayingState(false);
+      }
+
+      function seekToSliderValue() {
+        const nextTime = toClampedTime(slider.value);
+        player.currentTime = nextTime;
+        currentTime = nextTime;
+        updateTimeDisplay();
+      }
+
+      slider.addEventListener('pointerdown', function () {
+        isScrubbing = true;
+      });
+
+      slider.addEventListener('pointerup', function () {
+        isScrubbing = false;
+      });
+
+      slider.addEventListener('input', function () {
+        seekToSliderValue();
+      });
+
+      playBtn.addEventListener('click', function () {
+        void play();
+      });
+      pauseBtn.addEventListener('click', pause);
+
+      player.addEventListener('loadeddata', function () {
+        player.style.display = 'block';
+        placeholder.style.display = 'none';
+        previewWrap.classList.remove('loading');
+      });
+
+      player.addEventListener('loadedmetadata', function () {
+        if (Number.isFinite(player.duration) && player.duration > 0) {
+          slider.max = String(player.duration);
+        }
+        updateTimeDisplay();
+      });
+
+      player.addEventListener('timeupdate', function () {
+        if (isScrubbing) return;
+        currentTime = toClampedTime(player.currentTime);
+        slider.value = String(currentTime);
+        updateTimeDisplay();
+      });
+
+      player.addEventListener('playing', function () {
+        clearError();
+        setPlayingState(true);
+        previewWrap.classList.remove('loading');
+      });
+
+      player.addEventListener('pause', function () {
+        if (!player.ended) setPlayingState(false);
+      });
+
+      player.addEventListener('ended', function () {
+        setPlayingState(false);
+        currentTime = getDuration();
+        slider.value = String(currentTime);
+        updateTimeDisplay();
+      });
+
+      player.addEventListener('waiting', function () {
+        if (playing) {
+          previewWrap.classList.add('loading');
+        }
+      });
+
+      player.addEventListener('canplay', function () {
+        previewWrap.classList.remove('loading');
+      });
+
+      player.addEventListener('error', function () {
+        const mediaError = player.error;
+        const details = mediaError ? 'Media error code ' + mediaError.code : 'Unknown media error';
+        showError('Playback failed: ' + details);
+        setPlayingState(false);
+      });
+
+      player.src = '/api/playback';
+      player.load();
+
+      loadMetadata().catch(function (e) {
+        placeholder.textContent = 'Failed to load preview';
+        showError(e.message || String(e));
+      });
+    })();
+  </script>
+</body>
+</html>

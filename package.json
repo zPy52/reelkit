@@ -1,0 +1,40 @@
+{
+  "name": "videocanvas",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for video composition and rendering",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build",
+    "preview": "npm run build && node examples/preview/server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "video",
+    "editor",
+    "timeline",
+    "sdk",
+    "typescript",
+    "media"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "jsdom": "^26.0.0",
+    "tsdown": "^0.20.3",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
+  }
+}
