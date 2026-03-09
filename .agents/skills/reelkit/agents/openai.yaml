@@ -1,0 +1,4 @@
+interface:
+  display_name: "ReelKit"
+  short_description: "Compose and preview videos with the SDK"
+  default_prompt: "Use $reelkit to build or update a ReelKit timeline and preview flow."
