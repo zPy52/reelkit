@@ -1,6 +1,6 @@
-# vidio
+# reelkit
 
-`vidio` is a TypeScript SDK for building timeline-based video compositions and previewing them in the browser with a canvas renderer.
+`reelkit` is a TypeScript SDK for building timeline-based video compositions and previewing them in the browser with a canvas renderer.
 
 The current SDK surface covers:
 
@@ -9,12 +9,12 @@ The current SDK surface covers:
 - DOM canvas preview mounting
 - Offscreen frame capture with `getFrameAt()`
 - Browser export to downloadable `mp4` or `webm`
-- React helpers from `vidio/react`
+- React helpers from `reelkit/react`
 
 ## Installation
 
 ```bash
-npm install vidio
+npm install reelkit
 ```
 
 React support is exposed as an optional peer entrypoint:
@@ -33,7 +33,7 @@ import {
   TextClip,
   Timeline,
   VideoClip,
-} from 'vidio';
+} from 'reelkit';
 
 const timeline = new Timeline({
   width: 1280,
@@ -74,7 +74,7 @@ timeline.add(new TextClip({
   start: 0.4,
   duration: 3,
   track: 2,
-  text: 'VidIO',
+  text: 'ReelKit',
   placement: {
     x: '8%',
     y: '10%',
@@ -319,7 +319,7 @@ Supported anchors:
 Example custom effect:
 
 ```ts
-import { registerEffectNode } from 'vidio';
+import { registerEffectNode } from 'reelkit';
 
 registerEffectNode({
   name: 'contrast-pulse',
@@ -332,11 +332,11 @@ registerEffectNode({
 
 ## React
 
-React helpers are exported from `vidio/react`.
+React helpers are exported from `reelkit/react`.
 
 ```tsx
-import { Preview, useClips, usePlayback, useTimeline } from 'vidio/react';
-import { TextClip } from 'vidio';
+import { Preview, useClips, usePlayback, useTimeline } from 'reelkit/react';
+import { TextClip } from 'reelkit';
 
 export function EditorPreview() {
   const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });
@@ -376,7 +376,7 @@ Exports:
 `useExport()` wraps `timeline.export()` with `isExporting`, `progress`, `error`, and `cancel()`.
 
 ```tsx
-import { useExport, useTimeline } from 'vidio/react';
+import { useExport, useTimeline } from 'reelkit/react';
 
 function ExportButton() {
   const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });
@@ -476,7 +476,7 @@ npm run preview
 
 Then open `http://localhost:8765`.
 
-See [examples/preview/README.md](/Users/antoniopenapena/Documents/NpmProjects/vidio/examples/preview/README.md) for details.
+See [examples/preview/README.md](/Users/antoniopenapena/Documents/NpmProjects/reelkit/examples/preview/README.md) for details.
 
 ## Runtime Requirements
 

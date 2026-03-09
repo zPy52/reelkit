@@ -1,5 +1,5 @@
 # VideoContext-Inspired Canvas Preview Renderer
-## Implementation Plan for `vidio` SDK
+## Implementation Plan for `reelkit` SDK
 
 **Date:** 2026-03-09
 **Scope:** Canvas-based real-time preview, new Timeline/Clip object model, React integration
@@ -8,7 +8,7 @@
 
 ## 1. Context and Goals
 
-The existing `vidio` SDK is Node.js-only and server-side: it uses FFmpeg to produce frames as PNG
+The existing `reelkit` SDK is Node.js-only and server-side: it uses FFmpeg to produce frames as PNG
 buffers or short MP4 segments, which are served over HTTP to a `<video>` element in the browser.
 This works for simple playback but is unsuitable for:
 
@@ -1026,8 +1026,8 @@ own `width`/`height` attributes.
 ### 9.6 Usage example (inspired by getrx reactive patterns)
 
 ```tsx
-import { Timeline, VideoClip, TextClip } from 'vidio';
-import { useTimeline, usePlayback, useClips, Preview } from 'vidio/react';
+import { Timeline, VideoClip, TextClip } from 'reelkit';
+import { useTimeline, usePlayback, useClips, Preview } from 'reelkit/react';
 
 function VideoEditor() {
   const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });

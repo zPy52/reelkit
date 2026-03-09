@@ -1,4 +1,4 @@
-# VidIO API Reference
+# ReelKit API Reference
 
 ## Package Surface
 
@@ -14,7 +14,7 @@ import {
   EffectClip,
   registerEffectNode,
   getEffectNode,
-} from 'vidio';
+} from 'reelkit';
 ```
 
 React entrypoint:
@@ -27,7 +27,7 @@ import {
   usePlayback,
   useClips,
   usePreview,
-} from 'vidio/react';
+} from 'reelkit/react';
 ```
 
 ## Timeline
@@ -292,7 +292,7 @@ useEffect(() => {
   timeline.add(new TextClip({
     start: 0,
     duration: 2,
-    text: 'Hello VidIO',
+    text: 'Hello ReelKit',
   }));
 }, [timeline]);
 

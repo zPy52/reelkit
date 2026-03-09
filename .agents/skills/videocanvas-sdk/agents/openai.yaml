@@ -1,4 +1,4 @@
 interface:
-  display_name: "VidIO SDK"
+  display_name: "ReelKit SDK"
   short_description: "Compose and preview videos with the SDK"
-  default_prompt: "Use $vidio-sdk to build or update a VidIO timeline and preview flow."
+  default_prompt: "Use $reelkit-sdk to build or update a ReelKit timeline and preview flow."

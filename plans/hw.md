@@ -1,5 +1,5 @@
 ```ts
-import { VidioMedia } from 'vidio';
+import { VidioMedia } from 'reelkit';
 
 VidioMedia.hardware.list(); // Array<{ name: string; id: string; type: 'cpu' | 'gpu' }>
 // This lists all options such as
