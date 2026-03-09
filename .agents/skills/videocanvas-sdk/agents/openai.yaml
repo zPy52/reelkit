@@ -1,0 +1,4 @@
+interface:
+  display_name: "VideoCanvas SDK"
+  short_description: "Compose and preview videos with the SDK"
+  default_prompt: "Use $videocanvas-sdk to build or update a VideoCanvas timeline and preview flow."

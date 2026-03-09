@@ -1,31 +1,37 @@
-# Preview example (vanilla JS)
+# Browser Preview Example
 
-A small Node server plus HTML page to preview a `VidioMedia` composition in the browser: play, pause, and scrub with a slider.
+This example serves a static page that imports the built SDK from `dist/` and composes the local
+media in `assets/` directly in the browser.
+
+The preview path uses:
+
+- `Timeline` plus clip classes from the SDK
+- a `<canvas>` compositor in the browser
+- hidden HTML media elements for decode and audio playback
+- no FFmpeg-backed preview endpoints
 
 ## Run
 
-From the **repo root** (after building the SDK):
+From the repo root:
 
 ```bash
-npm run build
-node examples/preview/server.mjs [path/to/video.mp4]
+npm install
+npm run preview
 ```
 
-- **With no path**: Uses the built-in **demo** (same as `demo-wallpaper-pip-fade.mp4`): wallpaper background, centered main video, and a PiP (guy talking) with fade-in. Requires these assets in `assets/`:
-  - `sample-wallpaper.jpg`
-  - `sample-video.mp4`
-  - `sample-guy-talking.mp4`
-  The server pre-builds the preview segment at startup so the first load is usually quick; if you open the page immediately, you may see "Loading…" for a few seconds while the segment is encoded.
-- **With a path**: Previews that single video file.
+Then open `http://localhost:8765`.
 
-Then open **http://localhost:8765** in a browser.
+## Demo media
 
-## What it does
+The page uses:
 
-- **Server** (`server.mjs`): Builds a `VidioMedia` (from the demo composition or the file you pass), serves the HTML page, and exposes:
-  - `GET /api/metadata` → `{ duration, width, height, fps }`
-  - `GET /api/frame?t=<seconds>` → PNG image for that time (low-res, max height 360px, for fast extraction)
-  - `GET /api/playback` → range-enabled MP4 stream generated with `preview.exportSegment(...)`
-- **Page** (`index.html`): Vanilla JS that plays `/api/playback` in a `<video>` element and wires custom play/pause/seek controls for smooth playback.
+- `assets/sample-wallpaper.jpg`
+- `assets/sample-video.mp4`
+- `assets/sample-guy-talking.mp4`
+- `assets/sample-audio.mp3`
 
-Use demo mode to verify on-the-fly filters (fade-in, overlays, etc.) in the preview. You can edit `server.mjs` to change the composition (e.g. add blur or zoom) and the preview will reflect it.
+## Notes
+
+- The server only serves static files from `examples/preview/`, `dist/`, and `assets/`.
+- The React preview surface is exported from `videocanvas/react`.
+- Audio playback still depends on the browser allowing media playback after a user gesture.

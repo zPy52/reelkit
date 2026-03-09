@@ -3,304 +3,475 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vidio preview</title>
+  <title>videocanvas preview composition</title>
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --paper: #f2ece2;
+      --paper-shadow: rgba(73, 47, 25, 0.22);
+      --ink: #1f1915;
+      --muted: #6b5c4d;
+      --accent: #c85b31;
+      --accent-soft: rgba(200, 91, 49, 0.14);
+      --line: rgba(32, 25, 21, 0.14);
+      --panel: rgba(255, 250, 241, 0.72);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(200, 91, 49, 0.22), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(32, 25, 21, 0.24), transparent 36%),
+        linear-gradient(135deg, #f6f2ea 0%, #e6ddd0 56%, #d9ccb7 100%);
+    }
+
     body {
-      font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
-      padding: 24px;
-      background: #0f0f0f;
-      color: #e0e0e0;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      color: var(--ink);
+      font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.32)),
+        repeating-linear-gradient(
+          0deg,
+          rgba(31, 25, 21, 0.02) 0,
+          rgba(31, 25, 21, 0.02) 1px,
+          transparent 1px,
+          transparent 7px
+        );
     }
-    h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin: 0 0 20px;
-      color: #fff;
+
+    .shell {
+      width: min(1220px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
     }
-    .preview-wrap {
-      width: 100%;
-      max-width: 900px;
-      background: #1a1a1a;
-      border-radius: 12px;
-      overflow: hidden;
-      aspect-ratio: 16 / 9;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 20px;
     }
-    .preview-wrap video {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-    .preview-wrap.loading video { opacity: 0.7; }
-    .preview-wrap .placeholder {
-      color: #666;
-      font-size: 0.9rem;
-    }
-    .controls {
-      width: 100%;
-      max-width: 900px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 12px;
-    }
-    .slider-wrap {
-      flex: 1;
-      min-width: 200px;
-      display: flex;
+
+    .eyebrow {
+      display: inline-flex;
       align-items: center;
       gap: 10px;
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
-    input[type="range"] {
-      flex: 1;
-      height: 8px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: #333;
-      border-radius: 4px;
+
+    .eyebrow::before {
+      content: "";
+      width: 42px;
+      height: 1px;
+      background: currentColor;
     }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #6b8cff;
-      cursor: pointer;
+
+    h1 {
+      margin: 0;
+      max-width: 11ch;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      font-size: clamp(2.9rem, 7vw, 6rem);
+      line-height: 0.92;
+      letter-spacing: -0.06em;
     }
-    input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #6b8cff;
-      cursor: pointer;
-      border: none;
+
+    .lede {
+      max-width: 68ch;
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: var(--muted);
     }
-    .time {
-      font-variant-numeric: tabular-nums;
-      min-width: 100px;
-      font-size: 0.9rem;
-      color: #999;
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
+      gap: 22px;
+      align-items: start;
     }
+
+    .stage-panel,
+    .manifest {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--panel);
+      box-shadow:
+        0 20px 50px var(--paper-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+    }
+
+    .stage-panel::after,
+    .manifest::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(140deg, rgba(255, 255, 255, 0.52), transparent 24%, transparent 76%, rgba(200, 91, 49, 0.08)),
+        linear-gradient(transparent, rgba(32, 25, 21, 0.03));
+    }
+
+    .stage-panel {
+      padding: 18px;
+    }
+
+    .stage-header,
+    .manifest header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .stage-header {
+      margin-bottom: 14px;
+    }
+
+    .stage-title,
+    .manifest h2,
+    .manifest h3 {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      letter-spacing: -0.04em;
+    }
+
+    .stage-title {
+      font-size: 1.7rem;
+    }
+
+    .stage-meta,
+    .manifest .note {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .stage {
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 30%),
+        linear-gradient(180deg, #342820 0%, #181310 100%);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      aspect-ratio: 16 / 9;
+      min-height: 260px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+
+    .stage-preview {
+      width: 100%;
+      height: 100%;
+    }
+
+    .stage-preview canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    .controls {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .transport {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
     button {
-      padding: 10px 18px;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 500;
+      appearance: none;
+      border: 1px solid rgba(31, 25, 21, 0.12);
+      border-radius: 999px;
+      padding: 11px 16px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       cursor: pointer;
-      background: #333;
-      color: #fff;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
     }
-    button:hover { background: #444; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.primary { background: #6b8cff; }
-    button.primary:hover { background: #7b9cff; }
-    .error {
-      color: #e57373;
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(31, 25, 21, 0.22);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff8f2;
+      border-color: rgba(140, 59, 29, 0.6);
+    }
+
+    .status {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .timeline-control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .manifest {
+      padding: 18px 18px 20px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .manifest section {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 12px;
+    }
+
+    .manifest h2 {
+      font-size: 1.45rem;
+    }
+
+    .manifest h3 {
+      font-size: 1rem;
+    }
+
+    .chip-list,
+    .cue-list,
+    .meta-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip-list li {
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid rgba(31, 25, 21, 0.08);
+      font-size: 0.74rem;
+      line-height: 1.55;
+    }
+
+    .cue-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .cue-list li {
+      display: grid;
+      gap: 5px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.52);
+      border: 1px solid rgba(31, 25, 21, 0.08);
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .cue-list li.active {
+      transform: translateX(8px);
+      border-color: rgba(200, 91, 49, 0.6);
+      background: linear-gradient(90deg, var(--accent-soft), rgba(255, 255, 255, 0.7));
+    }
+
+    .cue-time {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .cue-name {
       font-size: 0.9rem;
-      margin-top: 8px;
+      color: var(--ink);
+    }
+
+    .meta-list {
+      display: grid;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .meta-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(31, 25, 21, 0.08);
+    }
+
+    .error {
+      margin: 0;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(132, 29, 29, 0.1);
+      border: 1px solid rgba(132, 29, 29, 0.22);
+      color: #7a231b;
+      font-size: 0.78rem;
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        width: min(100vw - 20px, 1220px);
+        padding-top: 16px;
+      }
+
+      .stage-panel,
+      .manifest {
+        border-radius: 22px;
+      }
+
+      .transport {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .meta-list li {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Vidio preview</h1>
-  <div class="preview-wrap" id="previewWrap">
-    <span class="placeholder" id="placeholder">Loading…</span>
-    <video id="player" preload="auto" playsinline style="display: none;"></video>
-  </div>
-  <div class="controls">
-    <div class="slider-wrap">
-      <input type="range" id="slider" min="0" max="100" step="0.01" value="0" />
-      <span class="time" id="time">0.00s / 0.00s</span>
-    </div>
-    <button type="button" id="playBtn" class="primary">Play</button>
-    <button type="button" id="pauseBtn" disabled>Pause</button>
-  </div>
-  <p class="error" id="error" style="display: none;"></p>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">browser-native composition preview</p>
+      <h1>Assets on a live canvas timeline.</h1>
+      <p class="lede">
+        This example renders the repo’s local media directly in the browser with a timeline, layered
+        clips, a canvas compositor, and hidden media elements driving decode and audio sync. No
+        frame-export server is involved in the preview path.
+      </p>
+    </header>
 
-  <script>
-    (function () {
-      const previewWrap = document.getElementById('previewWrap');
-      const placeholder = document.getElementById('placeholder');
-      const player = document.getElementById('player');
-      const slider = document.getElementById('slider');
-      const timeEl = document.getElementById('time');
-      const playBtn = document.getElementById('playBtn');
-      const pauseBtn = document.getElementById('pauseBtn');
-      const errorEl = document.getElementById('error');
+    <section class="workspace" aria-label="Preview workspace">
+      <section class="stage-panel" aria-labelledby="stageTitle">
+        <header class="stage-header">
+          <div>
+            <h2 class="stage-title" id="stageTitle">Demo composition</h2>
+            <p class="stage-meta">Wallpaper background, hero video, picture-in-picture insert, title cards, soundtrack.</p>
+          </div>
+          <p class="stage-meta" id="runtimeSummary">00.00s / 00.00s</p>
+        </header>
 
-      let metadata = null;
-      let currentTime = 0;
-      let playing = false;
-      let isScrubbing = false;
+        <figure class="stage">
+          <div class="stage-preview" id="previewRoot"></div>
+        </figure>
 
-      function showError(msg) {
-        errorEl.textContent = msg;
-        errorEl.style.display = 'block';
-      }
+        <footer class="controls">
+          <nav class="transport" aria-label="Preview transport controls">
+            <div class="button-row">
+              <button class="primary" type="button" id="playToggle">Play</button>
+              <button type="button" id="restartButton">Restart</button>
+            </div>
+            <p class="status" id="playbackStatus">ready to play</p>
+          </nav>
 
-      function clearError() {
-        errorEl.textContent = '';
-        errorEl.style.display = 'none';
-      }
+          <section class="timeline-control" aria-labelledby="scrubTitle">
+            <div class="timeline-labels">
+              <span id="scrubTitle">Scrub</span>
+              <span id="frameLabel">frame 0</span>
+            </div>
+            <input type="range" id="timelineRange" min="0" max="1" step="0.01" value="0" />
+          </section>
 
-      function setPlayingState(nextPlaying) {
-        playing = nextPlaying;
-        playBtn.disabled = nextPlaying;
-        pauseBtn.disabled = !nextPlaying;
-      }
+          <p class="error" id="errorBox"></p>
+        </footer>
+      </section>
 
-      function formatTime(s) {
-        return s.toFixed(2) + 's';
-      }
+      <aside class="manifest" aria-labelledby="manifestTitle">
+        <header>
+          <div>
+            <h2 id="manifestTitle">Build sheet</h2>
+            <p class="note">The preview page is using files from <code>./assets/</code> and the built SDK from <code>./dist/</code>.</p>
+          </div>
+        </header>
 
-      function updateTimeDisplay() {
-        const dur = getDuration();
-        timeEl.textContent = formatTime(currentTime) + ' / ' + formatTime(dur);
-      }
+        <section aria-labelledby="assetTitle">
+          <h3 id="assetTitle">Asset palette</h3>
+          <ul class="chip-list">
+            <li><strong>sample-wallpaper.jpg</strong><br />background texture</li>
+            <li><strong>sample-video.mp4</strong><br />hero motion layer</li>
+            <li><strong>sample-guy-talking.mp4</strong><br />PiP speaker insert</li>
+            <li><strong>sample-audio.mp3</strong><br />soundtrack bed</li>
+            <li><strong>sample-img.png</strong><br />available for swaps</li>
+          </ul>
+        </section>
 
-      function getDuration() {
-        if (metadata && Number.isFinite(metadata.duration)) return metadata.duration;
-        if (Number.isFinite(player.duration)) return player.duration;
-        return 0;
-      }
+        <section aria-labelledby="cueTitle">
+          <h3 id="cueTitle">Cue list</h3>
+          <ul class="cue-list" id="cueList"></ul>
+        </section>
 
-      async function loadMetadata() {
-        const res = await fetch('/api/metadata');
-        if (!res.ok) throw new Error(await res.text());
-        metadata = await res.json();
-        slider.min = '0';
-        slider.max = String(metadata.duration);
-        slider.step = '0.01';
-        currentTime = 0;
-        updateTimeDisplay();
-      }
+        <section aria-labelledby="metaTitle">
+          <h3 id="metaTitle">Preview notes</h3>
+          <ul class="meta-list">
+            <li><span>Renderer</span><strong>2D canvas compositor</strong></li>
+            <li><span>Decode path</span><strong>hidden HTML media elements</strong></li>
+            <li><span>Playback clock</span><strong>timeline RAF</strong></li>
+            <li><span>React support</span><strong><code>videocanvas/react</code></strong></li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </main>
 
-      function toClampedTime(value) {
-        const duration = getDuration();
-        const numeric = Number.parseFloat(String(value));
-        if (!Number.isFinite(numeric)) return 0;
-        return Math.max(0, Math.min(numeric, duration));
-      }
-
-      async function play() {
-        clearError();
-        if (currentTime >= getDuration() - 1e-9) {
-          player.currentTime = 0;
-          currentTime = 0;
-          slider.value = '0';
-          updateTimeDisplay();
-        }
-        try {
-          await player.play();
-          setPlayingState(true);
-        } catch (e) {
-          showError('Play failed: ' + (e.message || e));
-          setPlayingState(false);
-        }
-      }
-
-      function pause() {
-        player.pause();
-        setPlayingState(false);
-      }
-
-      function seekToSliderValue() {
-        const nextTime = toClampedTime(slider.value);
-        player.currentTime = nextTime;
-        currentTime = nextTime;
-        updateTimeDisplay();
-      }
-
-      slider.addEventListener('pointerdown', function () {
-        isScrubbing = true;
-      });
-
-      slider.addEventListener('pointerup', function () {
-        isScrubbing = false;
-      });
-
-      slider.addEventListener('input', function () {
-        seekToSliderValue();
-      });
-
-      playBtn.addEventListener('click', function () {
-        void play();
-      });
-      pauseBtn.addEventListener('click', pause);
-
-      player.addEventListener('loadeddata', function () {
-        player.style.display = 'block';
-        placeholder.style.display = 'none';
-        previewWrap.classList.remove('loading');
-      });
-
-      player.addEventListener('loadedmetadata', function () {
-        if (Number.isFinite(player.duration) && player.duration > 0) {
-          slider.max = String(player.duration);
-        }
-        updateTimeDisplay();
-      });
-
-      player.addEventListener('timeupdate', function () {
-        if (isScrubbing) return;
-        currentTime = toClampedTime(player.currentTime);
-        slider.value = String(currentTime);
-        updateTimeDisplay();
-      });
-
-      player.addEventListener('playing', function () {
-        clearError();
-        setPlayingState(true);
-        previewWrap.classList.remove('loading');
-      });
-
-      player.addEventListener('pause', function () {
-        if (!player.ended) setPlayingState(false);
-      });
-
-      player.addEventListener('ended', function () {
-        setPlayingState(false);
-        currentTime = getDuration();
-        slider.value = String(currentTime);
-        updateTimeDisplay();
-      });
-
-      player.addEventListener('waiting', function () {
-        if (playing) {
-          previewWrap.classList.add('loading');
-        }
-      });
-
-      player.addEventListener('canplay', function () {
-        previewWrap.classList.remove('loading');
-      });
-
-      player.addEventListener('error', function () {
-        const mediaError = player.error;
-        const details = mediaError ? 'Media error code ' + mediaError.code : 'Unknown media error';
-        showError('Playback failed: ' + details);
-        setPlayingState(false);
-      });
-
-      player.src = '/api/playback';
-      player.load();
-
-      loadMetadata().catch(function (e) {
-        placeholder.textContent = 'Failed to load preview';
-        showError(e.message || String(e));
-      });
-    })();
-  </script>
+  <script type="module" src="/app.mjs"></script>
 </body>
 </html>

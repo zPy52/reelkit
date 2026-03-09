@@ -4,15 +4,29 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  entry: ['src/index.ts'],
-  format: ['esm'],
-  target: 'es2022',
-  outDir: 'dist',
-  clean: true,
-  sourcemap: true,
-  dts: true,
-  alias: {
-    '@': path.join(__dirname, 'src'),
+export default defineConfig([
+  {
+    entry: ['src/index.ts'],
+    format: ['esm'],
+    target: 'es2022',
+    outDir: 'dist',
+    clean: true,
+    sourcemap: true,
+    dts: true,
+    alias: {
+      '@': path.join(__dirname, 'src'),
+    },
   },
-});
+  {
+    entry: ['src/react/index.ts'],
+    format: ['esm'],
+    target: 'es2022',
+    outDir: 'dist/react',
+    sourcemap: true,
+    dts: true,
+    external: ['react', 'react-dom'],
+    alias: {
+      '@': path.join(__dirname, 'src'),
+    },
+  },
+]);
