@@ -1,6 +1,6 @@
-# videocanvas
+# vidio
 
-`videocanvas` is a TypeScript SDK for building timeline-based video compositions and previewing them in the browser with a canvas renderer.
+`vidio` is a TypeScript SDK for building timeline-based video compositions and previewing them in the browser with a canvas renderer.
 
 The current SDK surface covers:
 
@@ -9,12 +9,12 @@ The current SDK surface covers:
 - DOM canvas preview mounting
 - Offscreen frame capture with `getFrameAt()`
 - Browser export to downloadable `mp4` or `webm`
-- React helpers from `videocanvas/react`
+- React helpers from `vidio/react`
 
 ## Installation
 
 ```bash
-npm install videocanvas
+npm install vidio
 ```
 
 React support is exposed as an optional peer entrypoint:
@@ -33,7 +33,7 @@ import {
   TextClip,
   Timeline,
   VideoClip,
-} from 'videocanvas';
+} from 'vidio';
 
 const timeline = new Timeline({
   width: 1280,
@@ -74,7 +74,7 @@ timeline.add(new TextClip({
   start: 0.4,
   duration: 3,
   track: 2,
-  text: 'VideoCanvas',
+  text: 'VidIO',
   placement: {
     x: '8%',
     y: '10%',
@@ -319,7 +319,7 @@ Supported anchors:
 Example custom effect:
 
 ```ts
-import { registerEffectNode } from 'videocanvas';
+import { registerEffectNode } from 'vidio';
 
 registerEffectNode({
   name: 'contrast-pulse',
@@ -332,11 +332,11 @@ registerEffectNode({
 
 ## React
 
-React helpers are exported from `videocanvas/react`.
+React helpers are exported from `vidio/react`.
 
 ```tsx
-import { Preview, useClips, usePlayback, useTimeline } from 'videocanvas/react';
-import { TextClip } from 'videocanvas';
+import { Preview, useClips, usePlayback, useTimeline } from 'vidio/react';
+import { TextClip } from 'vidio';
 
 export function EditorPreview() {
   const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });
@@ -376,7 +376,7 @@ Exports:
 `useExport()` wraps `timeline.export()` with `isExporting`, `progress`, `error`, and `cancel()`.
 
 ```tsx
-import { useExport, useTimeline } from 'videocanvas/react';
+import { useExport, useTimeline } from 'vidio/react';
 
 function ExportButton() {
   const timeline = useTimeline({ width: 1280, height: 720, fps: 30 });
@@ -476,7 +476,7 @@ npm run preview
 
 Then open `http://localhost:8765`.
 
-See [examples/preview/README.md](/Users/antoniopenapena/Documents/NpmProjects/videocanvas/examples/preview/README.md) for details.
+See [examples/preview/README.md](/Users/antoniopenapena/Documents/NpmProjects/vidio/examples/preview/README.md) for details.
 
 ## Runtime Requirements
 

@@ -1,9 +1,9 @@
 ---
-name: videocanvas-sdk
-description: "Use this skill when working with the videocanvas TypeScript SDK in this repository: building or editing timelines, adding video/image/audio/text/effect clips, mounting browser previews, capturing frames, or using the React entrypoint from `videocanvas/react`. Also use it when documenting the SDK or generating examples so the output matches the current exported API instead of older plan documents."
+name: vidio-sdk
+description: "Use this skill when working with the vidio TypeScript SDK in this repository: building or editing timelines, adding video/image/audio/text/effect clips, mounting browser previews, capturing frames, or using the React entrypoint from `vidio/react`. Also use it when documenting the SDK or generating examples so the output matches the current exported API instead of older plan documents."
 ---
 
-# VideoCanvas SDK
+# VidIO SDK
 
 ## Overview
 
@@ -83,10 +83,10 @@ Read [references/api.md](references/api.md) when you need constructor signatures
 - Prefer short examples that mirror `examples/preview/app.mjs`.
 - Mention the automatic audio companion behavior for videos.
 - Document `timeline.export()` / `timeline.exportBlob()` when the task touches delivery or downloads.
-- Mention that `useExport()` is available from `videocanvas/react` for React UIs.
+- Mention that `useExport()` is available from `vidio/react` for React UIs.
 
 ## References
 
 - [references/api.md](references/api.md): API summary and examples
-- [README.md](/Users/antoniopenapena/Documents/NpmProjects/videocanvas/README.md): user-facing SDK documentation
-- [examples/preview/app.mjs](/Users/antoniopenapena/Documents/NpmProjects/videocanvas/examples/preview/app.mjs): end-to-end browser composition example
+- [README.md](/Users/antoniopenapena/Documents/NpmProjects/vidio/README.md): user-facing SDK documentation
+- [examples/preview/app.mjs](/Users/antoniopenapena/Documents/NpmProjects/vidio/examples/preview/app.mjs): end-to-end browser composition example

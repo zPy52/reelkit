@@ -1,4 +1,4 @@
-# VideoCanvas API Reference
+# VidIO API Reference
 
 ## Package Surface
 
@@ -14,7 +14,7 @@ import {
   EffectClip,
   registerEffectNode,
   getEffectNode,
-} from 'videocanvas';
+} from 'vidio';
 ```
 
 React entrypoint:
@@ -27,7 +27,7 @@ import {
   usePlayback,
   useClips,
   usePreview,
-} from 'videocanvas/react';
+} from 'vidio/react';
 ```
 
 ## Timeline
@@ -292,7 +292,7 @@ useEffect(() => {
   timeline.add(new TextClip({
     start: 0,
     duration: 2,
-    text: 'Hello VideoCanvas',
+    text: 'Hello VidIO',
   }));
 }, [timeline]);
 

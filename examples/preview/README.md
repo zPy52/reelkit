@@ -51,5 +51,5 @@ The gallery scenes use:
 
 - The server only serves static files from `examples/preview/`, `dist/`, `assets/`, and the
   browser-facing muxer modules under `node_modules/`.
-- The React preview surface is exported from `videocanvas/react`.
+- The React preview surface is exported from `vidio/react`.
 - Audio playback still depends on the browser allowing media playback after a user gesture.
