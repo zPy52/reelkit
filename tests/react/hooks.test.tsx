@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
+import { useEffect, useState } from 'react';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TextClip, Timeline } from '@/index';
-import { Preview, useClips, useExport, usePlayback, useTimeline } from '@/react';
+import { Preview, useClips, useExport, usePlayback, usePreview, useTimeline } from '@/react';
 import { installCanvasMock } from '../helpers';
 
 describe('react preview hooks', () => {
@@ -160,6 +161,27 @@ describe('react preview hooks', () => {
     });
 
     expect(shell.style.aspectRatio).toBe('640 / 360');
+  });
+
+  it('mounts the preview when the container appears after the initial render', async () => {
+    const timeline = new Timeline({ width: 1280, height: 720, fps: 30 });
+
+    function DeferredPreview() {
+      const { ref } = usePreview(timeline);
+      const [showContainer, setShowContainer] = useState(false);
+
+      useEffect(() => {
+        setShowContainer(true);
+      }, []);
+
+      return showContainer ? <div ref={ref} /> : null;
+    }
+
+    const view = render(<DeferredPreview />);
+
+    await waitFor(() => {
+      expect(view.container.querySelector('canvas')).not.toBeNull();
+    });
   });
 
   it('destroys hook-owned timelines on unmount', () => {
